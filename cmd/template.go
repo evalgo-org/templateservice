@@ -86,7 +86,7 @@ func main() {
 	// REST API endpoint
 	e.POST("/v1/api/render", handleRender)
 
-	// Semantic API endpoint (will be added)
+	// Semantic API endpoint
 	e.POST("/v1/api/semantic/action", handleSemanticAction)
 
 	// Health check

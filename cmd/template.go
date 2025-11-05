@@ -3,11 +3,16 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
 	"text/template"
 
+	"eve.evalgo.org/common"
+	evehttp "eve.evalgo.org/http"
+	"eve.evalgo.org/registry"
 	"github.com/labstack/echo/v4"
 )
 
@@ -75,30 +80,71 @@ func handleRender(c echo.Context) error {
 		ContentSize:    int64(len(result)),
 	}
 
-	log.Printf("Rendered template (size: %d bytes)", len(result))
-
 	return c.JSON(http.StatusOK, response)
 }
 
+var logger *common.ContextLogger
+
 func main() {
+	// Initialize logger
+	logger = common.ServiceLogger("templateservice", "1.0.0")
+
 	e := echo.New()
 
 	// REST API endpoint
 	e.POST("/v1/api/render", handleRender)
 
-	// Semantic API endpoint
-	e.POST("/v1/api/semantic/action", handleSemanticAction)
+	// Semantic API endpoint with EVE API key middleware
+	apiKey := os.Getenv("TEMPLATE_API_KEY")
+	apiKeyMiddleware := evehttp.APIKeyMiddleware(apiKey)
+	e.POST("/v1/api/semantic/action", handleSemanticAction, apiKeyMiddleware)
 
-	// Health check
-	e.GET("/health", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-	})
+	// EVE health check
+	e.GET("/health", evehttp.HealthCheckHandler("templateservice", "1.0.0"))
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8095"
 	}
 
-	log.Printf("templateservice starting on port %s", port)
-	e.Logger.Fatal(e.Start(":" + port))
+	// Auto-register with registry service if REGISTRYSERVICE_API_URL is set
+	portInt, _ := strconv.Atoi(port)
+	if _, err := registry.AutoRegister(registry.AutoRegisterConfig{
+		ServiceID:    "templateservice",
+		ServiceName:  "Template Rendering Service",
+		Description:  "Go template rendering service with semantic action support",
+		Port:         portInt,
+		Directory:    "/home/opunix/templateservice",
+		Binary:       "templateservice",
+		Capabilities: []string{"template-rendering", "go-templates", "semantic-actions"},
+	}); err != nil {
+		logger.WithError(err).Error("Failed to register with registry")
+	}
+
+	// Start server in goroutine
+	go func() {
+		logger.Infof("templateservice starting on port %s", port)
+		if err := e.Start(":" + port); err != nil {
+			logger.WithError(err).Error("Server error")
+		}
+	}()
+
+	// Wait for interrupt signal for graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("Shutting down server...")
+
+	// Unregister from registry
+	if err := registry.AutoUnregister("templateservice"); err != nil {
+		logger.WithError(err).Error("Failed to unregister from registry")
+	}
+
+	// Shutdown server
+	if err := e.Close(); err != nil {
+		logger.WithError(err).Error("Error during shutdown")
+	}
+
+	logger.Info("Server stopped")
 }

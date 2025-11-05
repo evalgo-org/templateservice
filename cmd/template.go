@@ -17,17 +17,40 @@ import (
 )
 
 // TemplateRequest represents a request to render a template
+// Semantic representation as Schema.org CreativeWork (specifically a DigitalDocument or template)
 type TemplateRequest struct {
-	Template   string                 `json:"template"`   // Template content (inline)
-	TemplateID string                 `json:"templateId"` // OR template file path/URL
-	Parameters map[string]interface{} `json:"parameters"` // Template variables
+	// JSON-LD semantic fields
+	Context string `json:"@context,omitempty"` // https://schema.org
+	Type    string `json:"@type,omitempty"`    // DigitalDocument or SoftwareSourceCode
+
+	// Schema.org CreativeWork properties
+	Text           string `json:"text,omitempty"`           // Template content (inline)
+	Identifier     string `json:"identifier,omitempty"`     // Template ID or path
+	EncodingFormat string `json:"encodingFormat,omitempty"` // Template format (e.g., "text/template")
+
+	// Template-specific properties
+	TemplateParameters map[string]interface{} `json:"templateParameters,omitempty"` // Template variables
+
+	// Legacy fields (for backward compatibility)
+	Template   string                 `json:"template,omitempty"`   // Deprecated: use text
+	TemplateID string                 `json:"templateId,omitempty"` // Deprecated: use identifier
+	Parameters map[string]interface{} `json:"parameters,omitempty"` // Deprecated: use templateParameters
 }
 
 // TemplateResponse returns the rendered output
+// Semantic representation as Schema.org CreativeWork (rendered document)
 type TemplateResponse struct {
-	Output         string `json:"output"`
-	EncodingFormat string `json:"encodingFormat"`
-	ContentSize    int64  `json:"contentSize"`
+	// JSON-LD semantic fields
+	Context string `json:"@context,omitempty"` // https://schema.org
+	Type    string `json:"@type,omitempty"`    // DigitalDocument or Article
+
+	// Schema.org CreativeWork properties
+	Text           string `json:"text,omitempty"`           // Rendered output
+	EncodingFormat string `json:"encodingFormat,omitempty"` // Output format (e.g., "text/plain", "text/html")
+	ContentSize    int64  `json:"contentSize,omitempty"`    // Size in bytes
+
+	// Legacy fields (for backward compatibility)
+	Output string `json:"output,omitempty"` // Deprecated: use text
 }
 
 // handleRender renders a template with provided parameters
@@ -37,14 +60,25 @@ func handleRender(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
 	}
 
-	// Get template content
+	// Normalize legacy fields to semantic fields for backward compatibility
+	if req.Text == "" && req.Template != "" {
+		req.Text = req.Template
+	}
+	if req.Identifier == "" && req.TemplateID != "" {
+		req.Identifier = req.TemplateID
+	}
+	if req.TemplateParameters == nil && req.Parameters != nil {
+		req.TemplateParameters = req.Parameters
+	}
+
+	// Get template content (prefer semantic fields)
 	var templateContent string
-	if req.Template != "" {
+	if req.Text != "" {
 		// Inline template
-		templateContent = req.Template
-	} else if req.TemplateID != "" {
+		templateContent = req.Text
+	} else if req.Identifier != "" {
 		// Load from file
-		data, err := os.ReadFile(req.TemplateID)
+		data, err := os.ReadFile(req.Identifier)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{
 				"error": fmt.Sprintf("failed to read template file: %v", err),
@@ -53,7 +87,7 @@ func handleRender(c echo.Context) error {
 		templateContent = string(data)
 	} else {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "either template or templateId is required",
+			"error": "either text/template or identifier/templateId is required",
 		})
 	}
 
@@ -65,8 +99,14 @@ func handleRender(c echo.Context) error {
 		})
 	}
 
+	// Use template parameters (prefer semantic field)
+	params := req.TemplateParameters
+	if params == nil {
+		params = req.Parameters
+	}
+
 	var output bytes.Buffer
-	if err := tmpl.Execute(&output, req.Parameters); err != nil {
+	if err := tmpl.Execute(&output, params); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": fmt.Sprintf("failed to execute template: %v", err),
 		})
@@ -75,9 +115,15 @@ func handleRender(c echo.Context) error {
 	result := output.String()
 
 	response := TemplateResponse{
-		Output:         result,
+		// Semantic fields
+		Context:        "https://schema.org",
+		Type:           "DigitalDocument",
+		Text:           result,
 		EncodingFormat: "text/plain",
 		ContentSize:    int64(len(result)),
+
+		// Legacy fields (for backward compatibility)
+		Output: result,
 	}
 
 	return c.JSON(http.StatusOK, response)

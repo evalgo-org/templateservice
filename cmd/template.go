@@ -162,7 +162,7 @@ func main() {
 		Port:         portInt,
 		Directory:    "/home/opunix/templateservice",
 		Binary:       "templateservice",
-		Capabilities: []string{"template-rendering", "go-templates", "semantic-actions"},
+		Capabilities: []string{"template-rendering", "go-templates"},
 	}); err != nil {
 		logger.WithError(err).Error("Failed to register with registry")
 	}

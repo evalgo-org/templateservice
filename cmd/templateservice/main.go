@@ -148,13 +148,15 @@ func main() {
 	apiGroup := e.Group("/v1/api")
 	sm.RegisterRoutes(apiGroup)
 
-	// REST API endpoint
-	e.POST("/v1/api/render", handleRender)
-
-	// Semantic API endpoint with EVE API key middleware
+	// API Key middleware
 	apiKey := os.Getenv("TEMPLATE_API_KEY")
 	apiKeyMiddleware := evehttp.APIKeyMiddleware(apiKey)
-	e.POST("/v1/api/semantic/action", handleSemanticAction, apiKeyMiddleware)
+
+	// Semantic API endpoint (primary interface)
+	apiGroup.POST("/semantic/action", handleSemanticAction, apiKeyMiddleware)
+
+	// REST endpoints (convenience adapters that convert to semantic actions)
+	registerRESTEndpoints(apiGroup, apiKeyMiddleware)
 
 	// EVE health check
 	e.GET("/health", evehttp.HealthCheckHandler("templateservice", "1.0.0"))

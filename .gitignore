@@ -6,7 +6,7 @@
 *.dylib
 
 # Go build artifacts
-templateservice
+/templateservice
 /cmd/templateservice/templateservice
 *.test
 *.out

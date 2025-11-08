@@ -392,7 +392,9 @@ Example error response:
 
 ## License
 
-Part of the EVE (Evalgo Virtual Environment) project.
+Apache License 2.0 - See LICENSE file for details.
+
+Copyright 2025 evalgo.org
 
 ## Links
 

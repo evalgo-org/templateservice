@@ -1,6 +1,7 @@
 package main
 
 import (
+    "eve.evalgo.org/web"
 	"bytes"
 	"fmt"
 	"net/http"
@@ -138,6 +139,17 @@ func main() {
 	logger = common.ServiceLogger("templateservice", "1.0.0")
 
 	e := echo.New()
+    
+    // Register EVE corporate identity assets
+    web.RegisterAssets(e)
+
+	// Initialize tracing (gracefully disabled if unavailable)
+	if tracer := tracing.Init(tracing.InitConfig{
+		ServiceID:        "templateservice",
+		DisableIfMissing: true,
+	}); tracer != nil {
+		e.Use(tracer.Middleware())
+	}
 
 	// Initialize state manager
 	sm := statemanager.New(statemanager.Config{

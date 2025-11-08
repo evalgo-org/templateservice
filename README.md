@@ -398,7 +398,7 @@ Copyright 2025 evalgo.org
 
 ## Links
 
-- [EVE Documentation](../when/docs/)
+- [EVE Documentation](https://eve.evalgo.org)
 - [REST Endpoint Design](../when/REST_ENDPOINT_DESIGN.md)
 - [Go Template Documentation](https://pkg.go.dev/text/template)
 - [Schema.org Actions](https://schema.org/Action)

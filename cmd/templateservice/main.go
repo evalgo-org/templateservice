@@ -14,6 +14,7 @@ import (
 	evehttp "eve.evalgo.org/http"
 	"eve.evalgo.org/registry"
 	"eve.evalgo.org/statemanager"
+	"eve.evalgo.org/tracing"
 	"github.com/labstack/echo/v4"
 )
 

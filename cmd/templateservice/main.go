@@ -1,7 +1,6 @@
 package main
 
 import (
-    "eve.evalgo.org/web"
 	"bytes"
 	"fmt"
 	"net/http"
@@ -10,6 +9,8 @@ import (
 	"strconv"
 	"syscall"
 	"text/template"
+
+	"eve.evalgo.org/web"
 
 	"eve.evalgo.org/common"
 	evehttp "eve.evalgo.org/http"
@@ -144,9 +145,9 @@ func main() {
 	semantic.MustRegister("ReplaceAction", handleSemanticReplace)
 
 	e := echo.New()
-    
-    // Register EVE corporate identity assets
-    web.RegisterAssets(e)
+
+	// Register EVE corporate identity assets
+	web.RegisterAssets(e)
 
 	// Initialize tracing (gracefully disabled if unavailable)
 	if tracer := tracing.Init(tracing.InitConfig{
@@ -184,13 +185,20 @@ func main() {
 		port = "8095"
 	}
 
-	// Auto-register with registry service if REGISTRYSERVICE_API_URL is set
+	// Get service URL from environment (for Docker container names) or default to localhost
 	portInt, _ := strconv.Atoi(port)
+	serviceURL := os.Getenv("TEMPLATE_SERVICE_URL")
+	if serviceURL == "" {
+		serviceURL = fmt.Sprintf("http://localhost:%d", portInt)
+	}
+
+	// Auto-register with registry service if REGISTRYSERVICE_API_URL is set
 	if _, err := registry.AutoRegister(registry.AutoRegisterConfig{
 		ServiceID:    "templateservice",
 		ServiceName:  "Template Rendering Service",
 		Description:  "Go template rendering service with semantic action support",
 		Port:         portInt,
+		ServiceURL:   serviceURL,
 		Directory:    "/home/opunix/templateservice",
 		Binary:       "templateservice",
 		Capabilities: []string{"template-rendering", "go-templates", "state-tracking"},

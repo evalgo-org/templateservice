@@ -3,7 +3,7 @@ module templateservice
 go 1.25
 
 require (
-	eve.evalgo.org v0.0.38
+	eve.evalgo.org v0.0.42
 	github.com/labstack/echo/v4 v4.13.4
 )
 
@@ -83,4 +83,3 @@ require (
 	google.golang.org/protobuf v1.36.10 // indirect
 )
 
-replace eve.evalgo.org => /home/opunix/eve

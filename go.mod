@@ -3,7 +3,7 @@ module templateservice
 go 1.25
 
 require (
-	eve.evalgo.org v0.0.33
+	eve.evalgo.org v0.0.36
 	github.com/labstack/echo/v4 v4.13.4
 )
 

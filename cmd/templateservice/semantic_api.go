@@ -28,7 +28,7 @@ func handleSemanticAction(c echo.Context) error {
 	return semantic.Handle(c, action)
 }
 
-func handleSemanticReplace(c echo.Context, action *semantic.SemanticAction) error {
+func handleSemanticReplaceImpl(c echo.Context, action *semantic.SemanticAction) error {
 	// Get template content from object
 	if action.Object == nil {
 		return semantic.ReturnActionError(c, action, "object is required", nil)
@@ -85,14 +85,25 @@ func handleSemanticReplace(c echo.Context, action *semantic.SemanticAction) erro
 		encodingFormat = action.Object.EncodingFormat
 	}
 
-	// Set result in action properties
-	action.Properties["result"] = map[string]interface{}{
-		"@type":          "MediaObject",
-		"text":           result,
-		"encodingFormat": encodingFormat,
-		"contentSize":    len(result),
+	// Use semantic Result structure
+	action.Result = &semantic.SemanticResult{
+		Type:   "Dataset",
+		Format: encodingFormat,
+		Output: result,
+		Value: map[string]interface{}{
+			"contentSize": len(result),
+		},
 	}
 
 	semantic.SetSuccessOnAction(action)
 	return c.JSON(http.StatusOK, action)
+}
+
+// handleSemanticReplace wraps the implementation to match ActionHandler signature
+func handleSemanticReplace(c echo.Context, actionInterface interface{}) error {
+	action, ok := actionInterface.(*semantic.SemanticAction)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid action type")
+	}
+	return handleSemanticReplaceImpl(c, action)
 }
